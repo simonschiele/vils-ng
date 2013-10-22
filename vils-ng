@@ -75,8 +75,8 @@ cp "$TMP" "$TMP".new
 
 $EDITOR_RENAME "$TMP".new
 
-$validate_checksum=$( sed 's|\t|\ |g' "$TMP" | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
-$validate_checksum_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
+validate_checksum=$( sed 's|\t|\ |g' "$TMP" | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
+validate_checksum_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
 
 if [ "$validate_checksum" != "$validate_checksum_new" ]
 then
