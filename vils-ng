@@ -3,10 +3,10 @@
 LANG=C
 EDITOR_RENAME=${EDITOR_RENAME:-${EDITOR:-/usr/bin/vi}}
 TMP="${HOME}/.vils-ng.$$.tmp"
+PREPEND=6
 
 HELP=false
 RECURSIVE=false
-SPECIFIC=false
 VERBOSE=
 
 Cleanup() {
@@ -15,24 +15,24 @@ Cleanup() {
 }
 
 Help() {
-    echo -e ""
-    echo -e "vils-ng [options] [file1] [file2] [file3] [...]"
-    echo -e ""
-    echo -e " -h\thelp"
-    echo -e " -r\trecursive"
-    echo -e " -v\tverbose"
-    echo -e ""
-    echo -e "Examples:"
-    echo -e ""
-    echo -e " rename files in actual dir:"
-    echo -e " > vils-ng"
-    echo -e ""
-    echo -e " rename specific files:"
-    echo -e " > vils-ng testfile1.txt testfile2.mkv testdir/testfile3.log"
-    echo -e ""
-    echo -e " rename files in actual dir and all subdirs:"
-    echo -e " > vils-ng -r"
-    echo -e ""
+    echo -e "" >&2
+    echo -e "vils-ng [options] [file1] [file2] [file3] [...]" >&2
+    echo -e "" >&2
+    echo -e " -h\thelp" >&2
+    echo -e " -r\trecursive" >&2
+    echo -e " -v\tverbose" >&2
+    echo -e "" >&2
+    echo -e "Examples:" >&2
+    echo -e "" >&2
+    echo -e " rename files in actual dir:" >&2
+    echo -e " > vils-ng" >&2
+    echo -e "" >&2
+    echo -e " rename specific files:" >&2
+    echo -e " > vils-ng testfile1.txt testfile2.mkv testdir/testfile3.log" >&2
+    echo -e "" >&2
+    echo -e " rename files in actual dir and all subdirs:" >&2
+    echo -e " > vils-ng -r" >&2
+    echo -e "" >&2
     exit 0 
 }
 
@@ -48,10 +48,12 @@ while getopts ":rhv" opt; do
             VERBOSE="-v"
             ;;
         \?)
-            SPECIFIC=true
+            echo "Unknown Flag: -$OPTARG" >&2
+            exit 1
             ;;
     esac
 done
+shift $((OPTIND-1))
 
 if ( $HELP )
 then
@@ -60,16 +62,14 @@ fi
 
 trap Cleanup 1 2 3 15
 
-if ( $SPECIFIC )
+if [[ -n "${@}" ]]
 then
-    #ls -d -- "$@" | awk '{printf "%08d %s\n", NR, $0}' > "$TMP"
-    echo "SPECIFIC"
-    exit 1
+    ls -d -- $@ | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
 elif ( $RECURSIVE )
 then
-    find . -mindepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%08d %s\n", NR, $0}' > "$TMP"
+    find . -mindepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
 else
-    find . -mindepth 1 -maxdepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%08d %s\n", NR, $0}' > "$TMP"
+    find . -mindepth 1 -maxdepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
 fi
 cp "$TMP" "$TMP".new
 
@@ -80,7 +80,7 @@ validate_checksum_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^
 
 if [ "$validate_checksum" != "$validate_checksum_new" ]
 then
-    echo "Canceling rename. Illegal changes to filelist."
+    echo "Canceling rename. Illegal changes to filelist." >&2
     exit 1
 elif [ $( md5sum "$TMP" | awk {'print $1'} ) != $( md5sum "$TMP".new | awk {'print $1'} ) ]
 then
