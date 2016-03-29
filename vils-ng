@@ -1,26 +1,31 @@
 #!/bin/bash
 
 LANG=C
-EDITOR_RENAME=${EDITOR_RENAME:-${EDITOR:-/usr/bin/vi}}
 TMP="${HOME}/.vils-ng.$$.tmp"
 PREPEND=6
 
 HELP=false
 RECURSIVE=false
+GUI=false
 VERBOSE=
 
-Cleanup() {
+function cleanup() {
     rm -f "$TMP" "$TMP".new
     exit 1
 }
 
-Help() {
+function sourced() {
+    [[ "$( readlink -f ${0} )" != "$( readlink -f ${BASH_SOURCE[0]} )" ]]
+}
+
+function help() {
     echo -e "" >&2
     echo -e "vils-ng [options] [file1] [file2] [file3] [...]" >&2
     echo -e "" >&2
     echo -e " -h\thelp" >&2
     echo -e " -r\trecursive" >&2
     echo -e " -v\tverbose" >&2
+    echo -e " -x\tuse x11 editor" >&2
     echo -e "" >&2
     echo -e "Examples:" >&2
     echo -e "" >&2
@@ -36,67 +41,88 @@ Help() {
     exit 0 
 }
 
-while getopts ":rhv" opt; do
-    case $opt in
-        h)
-            HELP=true
-            ;;
-        r)
-            RECURSIVE=true
-            ;;
-        v)
-            VERBOSE="-v"
-            ;;
-        \?)
-            echo "Unknown Flag: -$OPTARG" >&2
-            exit 1
-            ;;
-    esac
-done
-shift $((OPTIND-1))
+function main() {
 
-if ( $HELP )
-then
-    Help
-fi
-
-trap Cleanup 1 2 3 15
-
-if [[ -n "${@}" ]]
-then
-    ls -d -- $@ | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
-elif ( $RECURSIVE )
-then
-    find . -mindepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
-else
-    find . -mindepth 1 -maxdepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
-fi
-cp "$TMP" "$TMP".new
-
-$EDITOR_RENAME "$TMP".new
-
-validate_checksum=$( sed 's|\t|\ |g' "$TMP" | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
-validate_checksum_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
-
-if [ "$validate_checksum" != "$validate_checksum_new" ]
-then
-    echo "Canceling rename. Illegal changes to filelist." >&2
-    exit 1
-elif [ $( md5sum "$TMP" | awk {'print $1'} ) != $( md5sum "$TMP".new | awk {'print $1'} ) ]
-then
-    cat "$TMP" | while read line
-    do
-        linenr=$( echo "$line" | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' )
-        filename=$( echo "$line" | sed 's|^\([0-9]*\ \)\(.*\)$|\2|g' )
-        new_filename=$( grep "^${linenr}" "$TMP".new | cut -f'2-' -d' ' )
-        if [ "$filename" != "$new_filename" ]
-        then
-            mkdir -p $( dirname "${new_filename}" )
-            mv ${VERBOSE} -i "${filename}" "${new_filename}" 
-        fi
+    while getopts ":rhvx" opt; do
+        case $opt in
+            h)
+                HELP=true
+                ;;
+            x)
+                GUI=true
+                ;;
+            r)
+                RECURSIVE=true
+                ;;
+            v)
+                VERBOSE="-v"
+                ;;
+            \?)
+                echo "Unknown Flag: -$OPTARG" >&2
+                exit 1
+                ;;
+        esac
     done
+    shift $((OPTIND-1))
+
+    if [ -n "${VERBOSE}" ] ; then
+        echo "Config"
+        echo " HELP: $HELP"
+        echo " RECURSIVE: $RECURSIVE"
+        echo " VERBOSE: $VERBOSE"
+        echo " GUI: $GUI"
+    fi
+    
+    if ( $HELP )
+    then
+        help
+    fi
+
+    trap cleanup 1 2 3 15
+
+    if [[ -n "${@}" ]]
+    then
+        ls -d -- $@ | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
+    elif ( $RECURSIVE )
+    then
+        find . -mindepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
+    else
+        find . -mindepth 1 -maxdepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
+    fi
+    cp "$TMP" "$TMP".new
+
+    if $GUI ; then
+        ${VISUAL:-/usr/bin/gvim}} "$TMP".new
+    else
+        ${EDITOR:-/usr/bin/vi} "$TMP".new
+    fi
+
+    validate_checksum=$( sed 's|\t|\ |g' "$TMP" | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
+    validate_checksum_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
+
+    if [ "$validate_checksum" != "$validate_checksum_new" ]
+    then
+        echo "Canceling rename. Illegal changes to filelist." >&2
+        exit 1
+    elif [ $( md5sum "$TMP" | awk {'print $1'} ) != $( md5sum "$TMP".new | awk {'print $1'} ) ]
+    then
+        cat "$TMP" | while read line
+        do
+            linenr=$( echo "$line" | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' )
+            filename=$( echo "$line" | sed 's|^\([0-9]*\ \)\(.*\)$|\2|g' )
+            new_filename=$( grep "^${linenr}" "$TMP".new | cut -f'2-' -d' ' )
+            if [ "$filename" != "$new_filename" ]
+            then
+                mkdir -p $( dirname "${new_filename}" )
+                mv ${VERBOSE} -i "${filename}" "${new_filename}" 
+            fi
+        done
+    fi
+
+    rm -f "$TMP" "$TMP".new
+    exit 0
+}
+
+if ! sourced ; then
+    main "${@}"
 fi
-
-rm -f "$TMP" "$TMP".new
-exit 0
-
