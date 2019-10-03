@@ -9,13 +9,14 @@ RECURSIVE=false
 GUI=false
 VERBOSE=
 
+case "$(uname -s)" in
+  Linux*)   MD5SUM="md5sum";;
+  Darwin*)  MD5SUM="md5 -q";;
+esac
+
 function cleanup() {
     rm -f "$TMP" "$TMP".new
     exit 1
-}
-
-function sourced() {
-    [[ "$( readlink -f ${0} )" != "$( readlink -f ${BASH_SOURCE[0]} )" ]]
 }
 
 function help() {
@@ -38,7 +39,7 @@ function help() {
     echo -e " rename files in actual dir and all subdirs:" >&2
     echo -e " > vils-ng -r" >&2
     echo -e "" >&2
-    exit 0 
+    exit 0
 }
 
 function main() {
@@ -72,7 +73,7 @@ function main() {
         echo " VERBOSE: $VERBOSE"
         echo " GUI: $GUI"
     fi
-    
+
     if ( $HELP )
     then
         help
@@ -92,19 +93,19 @@ function main() {
     cp "$TMP" "$TMP".new
 
     if $GUI ; then
-        ${VISUAL:-/usr/bin/gvim}} "$TMP".new
+        ${VISUAL:-/usr/bin/gvim} "$TMP".new
     else
         ${EDITOR:-/usr/bin/vi} "$TMP".new
     fi
 
-    validate_checksum=$( sed 's|\t|\ |g' "$TMP" | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
-    validate_checksum_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | md5sum | awk {'print $1'} )
+    validate_checksum=$( sed 's|\t|\ |g' "$TMP" | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | $MD5SUM | awk {'print $1'} )
+    validate_checksum_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | $MD5SUM | awk {'print $1'} )
 
     if [ "$validate_checksum" != "$validate_checksum_new" ]
     then
         echo "Canceling rename. Illegal changes to filelist." >&2
         exit 1
-    elif [ $( md5sum "$TMP" | awk {'print $1'} ) != $( md5sum "$TMP".new | awk {'print $1'} ) ]
+    elif [ $( $MD5SUM "$TMP" | awk {'print $1'} ) != $( $MD5SUM "$TMP".new | awk {'print $1'} ) ]
     then
         cat "$TMP" | while read line
         do
@@ -114,7 +115,7 @@ function main() {
             if [ "$filename" != "$new_filename" ]
             then
                 mkdir -p $( dirname "${new_filename}" )
-                mv ${VERBOSE} -i "${filename}" "${new_filename}" 
+                mv ${VERBOSE} -i "${filename}" "${new_filename}"
             fi
         done
     fi
@@ -123,6 +124,4 @@ function main() {
     exit 0
 }
 
-if ! sourced ; then
-    main "${@}"
-fi
+main "${@}"
