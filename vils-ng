@@ -128,19 +128,24 @@ function vils_ng() {
     fi
     cp "$TMP" "$TMP".new
 
+    checksum_validate=$( sed 's|\t|\ |g' "$TMP" | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | $MD5SUM | awk {'print $1'} )
+    checksum=$( $MD5SUM "$TMP" | awk {'print $1'} )
+
     if ( $GUI )
     then
         ${VISUAL:-/usr/bin/gvim} "$TMP".new
     else
         ${EDITOR:-/usr/bin/vi} "$TMP".new
     fi
+    checksum_validate_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | $MD5SUM | awk {'print $1'} )
 
-    validate_checksum=$( sed 's|\t|\ |g' "$TMP" | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | $MD5SUM | awk {'print $1'} )
-    validate_checksum_new=$( sed 's|\t|\ |g' "$TMP".new | grep -v '^\ *$' | sed 's|^\([0-9]*\ \)\(.*\)$|\1|g' | $MD5SUM | awk {'print $1'} )
-
-    if [ "$validate_checksum" != "$validate_checksum_new" ]
+    if [ "$checksum_validate" != "$checksum_validate_new" ]
     then
-        echo "Canceling rename. Illegal changes to filelist." >&2
+        echo "Canceling rename. Illegal changes made to filelist." >&2
+        exit 1
+    elif [ "$checksum" != "$( $MD5SUM "$TMP" | awk {'print $1'} )" ]
+    then
+        echo "Canceling rename. Original filelist changed." >&2
         exit 1
     elif [ $( $MD5SUM "$TMP" | awk {'print $1'} ) != $( $MD5SUM "$TMP".new | awk {'print $1'} ) ]
     then
