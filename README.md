@@ -74,6 +74,10 @@ existing, it will be created.
 A combination of -r (recursive) and directly targeting directories as
 command-line arguments is not supported at the moment.
 
+Switching out the names of 2 lines will not work reliably. It depends on the
+order if the operation will be successful and it is therefore not recommended
+to do this. Please be careful, it is your data (-:
+
 
 ## Authors
 
