@@ -37,11 +37,11 @@ function help() {
     echo -e " -h\thelp" >&2
     echo -e " -r\trecursive" >&2
     echo -e " -v\tverbose" >&2
-    echo -e " -d\tdry-run (don't actually move the files)" >&2
+    echo -e " -d\tdry-run (only print what would be done, do not actually move files)" >&2
     echo -e " -D\tdebug" >&2
     echo -e " -x\tuse x11 editor" >&2
     echo -e "" >&2
-    echo -e "Examples:" >&2
+    echo -e "Usage examples:" >&2
     echo -e "" >&2
     echo -e " # rename files in current dir:" >&2
     echo -e " > vils-ng" >&2
