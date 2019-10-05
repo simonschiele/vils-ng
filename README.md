@@ -34,7 +34,7 @@ after you close the editor.
 Options and usage examples can be found in the help-message:
 
 
-```bash
+```
 simon@cpad ~ > vils-ng -h
 vils-ng [options] [file1] [file2] [file3] [...]
 
