@@ -155,6 +155,8 @@ function vils_ng() {
                 $ECHO mv ${VERBOSE} -i "${filename}" "${new_filename}"
             fi
         done
+    else
+        echo "No changes. Nothing renamed or moved."
     fi
 
     rm -f "$TMP" "$TMP".new
