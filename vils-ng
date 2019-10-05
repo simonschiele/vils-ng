@@ -1,4 +1,9 @@
 #!/bin/bash
+#
+# vils-ng
+#
+# see https://github.com/simonschiele/vils-ng for details
+#
 
 LANG=C
 TMP="${HOME}/.vils-ng.$$.tmp"
@@ -7,6 +12,8 @@ PREPEND=6
 HELP=false
 RECURSIVE=false
 GUI=false
+DEBUG=false
+MAXDEPTH=
 VERBOSE=
 
 case "$(uname -s)" in
@@ -20,31 +27,34 @@ function cleanup() {
 }
 
 function help() {
-    echo -e "" >&2
     echo -e "vils-ng [options] [file1] [file2] [file3] [...]" >&2
     echo -e "" >&2
+    echo -e 'Mass-renaming with your favorite editor!' >&2
+    echo -e "" >&2
+    echo -e "Options:" >&2
     echo -e " -h\thelp" >&2
     echo -e " -r\trecursive" >&2
     echo -e " -v\tverbose" >&2
+    echo -e " -D\tdebug" >&2
     echo -e " -x\tuse x11 editor" >&2
     echo -e "" >&2
     echo -e "Examples:" >&2
     echo -e "" >&2
-    echo -e " rename files in actual dir:" >&2
+    echo -e " # rename files in current dir:" >&2
     echo -e " > vils-ng" >&2
     echo -e "" >&2
-    echo -e " rename specific files:" >&2
+    echo -e " # rename specific files:" >&2
     echo -e " > vils-ng testfile1.txt testfile2.mkv testdir/testfile3.log" >&2
     echo -e "" >&2
-    echo -e " rename files in actual dir and all subdirs:" >&2
+    echo -e " # rename files in current dir and all subdirs:" >&2
     echo -e " > vils-ng -r" >&2
     echo -e "" >&2
     exit 0
 }
 
-function main() {
+function vils_ng() {
 
-    while getopts ":rhvx" opt; do
+    while getopts ":hxrDv" opt; do
         case $opt in
             h)
                 HELP=true
@@ -55,44 +65,59 @@ function main() {
             r)
                 RECURSIVE=true
                 ;;
+            D)
+                DEBUG=true
+                ;;
             v)
                 VERBOSE="-v"
                 ;;
             \?)
-                echo "Unknown Flag: -$OPTARG" >&2
+                echo "Unknown Option: -$OPTARG" >&2
                 exit 1
                 ;;
         esac
     done
-    shift $((OPTIND-1))
 
-    if [ -n "${VERBOSE}" ] ; then
+    if ( $DEBUG )
+    then
+        echo ""
+        echo "Called as:"
+        echo " $0 $@"
+        echo ""
         echo "Config"
+        echo " DEBUG: true"
         echo " HELP: $HELP"
+        echo " GUI: $GUI"
         echo " RECURSIVE: $RECURSIVE"
         echo " VERBOSE: $VERBOSE"
-        echo " GUI: $GUI"
+        echo ""
     fi
+
+    shift $((OPTIND-1))
 
     if ( $HELP )
     then
         help
     fi
 
+    # Setup trap for cleanup on interrupt
     trap cleanup 1 2 3 15
+
+    if ( ! $RECURSIVE )
+    then
+        MAXDEPTH="-maxdepth 1"
+    fi
 
     if [[ -n "${@}" ]]
     then
         ls -d -- $@ | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
-    elif ( $RECURSIVE )
-    then
-        find . -mindepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
     else
-        find . -mindepth 1 -maxdepth 1 -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
+        find . -mindepth 1 ${MAXDEPTH} -type d -exec sh -c 'printf "%s/\n" "$0"' {} \; -or -print | sed 's|^./||g' | awk '{printf "%0'${PREPEND}'d %s\n", NR, $0}' > "$TMP"
     fi
     cp "$TMP" "$TMP".new
 
-    if $GUI ; then
+    if ( $GUI )
+    then
         ${VISUAL:-/usr/bin/gvim} "$TMP".new
     else
         ${EDITOR:-/usr/bin/vi} "$TMP".new
@@ -124,4 +149,4 @@ function main() {
     exit 0
 }
 
-main "${@}"
+vils_ng "${@}"
