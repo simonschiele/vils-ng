@@ -12,9 +12,11 @@ PREPEND=6
 HELP=false
 RECURSIVE=false
 GUI=false
+DRYRUN=false
 DEBUG=false
 MAXDEPTH=
 VERBOSE=
+ECHO=
 
 case "$(uname -s)" in
   Linux*)   MD5SUM="md5sum";;
@@ -35,6 +37,7 @@ function help() {
     echo -e " -h\thelp" >&2
     echo -e " -r\trecursive" >&2
     echo -e " -v\tverbose" >&2
+    echo -e " -d\tdry-run (don't actually move the files)" >&2
     echo -e " -D\tdebug" >&2
     echo -e " -x\tuse x11 editor" >&2
     echo -e "" >&2
@@ -54,7 +57,7 @@ function help() {
 
 function vils_ng() {
 
-    while getopts ":hxrDv" opt; do
+    while getopts ":hxrdDv" opt; do
         case $opt in
             h)
                 HELP=true
@@ -64,6 +67,9 @@ function vils_ng() {
                 ;;
             r)
                 RECURSIVE=true
+                ;;
+            d)
+                DRYRUN=true
                 ;;
             D)
                 DEBUG=true
@@ -89,6 +95,7 @@ function vils_ng() {
         echo " HELP: $HELP"
         echo " GUI: $GUI"
         echo " RECURSIVE: $RECURSIVE"
+        echo " DRYRUN: $DRYRUN"
         echo " VERBOSE: $VERBOSE"
         echo ""
     fi
@@ -106,6 +113,11 @@ function vils_ng() {
     if ( ! $RECURSIVE )
     then
         MAXDEPTH="-maxdepth 1"
+    fi
+
+    if ( $DRYRUN )
+    then
+        ECHO="echo"
     fi
 
     if [[ -n "${@}" ]]
@@ -139,8 +151,8 @@ function vils_ng() {
             new_filename=$( grep "^${linenr}" "$TMP".new | cut -f'2-' -d' ' )
             if [ "$filename" != "$new_filename" ]
             then
-                mkdir -p $( dirname "${new_filename}" )
-                mv ${VERBOSE} -i "${filename}" "${new_filename}"
+                $ECHO mkdir -p $( dirname "${new_filename}" )
+                $ECHO mv ${VERBOSE} -i "${filename}" "${new_filename}"
             fi
         done
     fi

@@ -32,6 +32,7 @@ Options:
  -h    help
  -r    recursive
  -v    verbose
+ -d    dry-run (don't actually move the files)
  -D    debug
  -x    use x11 editor
 
